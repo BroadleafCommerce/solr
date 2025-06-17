@@ -217,8 +217,54 @@ task dockerAlpineBuildxBakeAndTag() {
         environment "LIMIT_PLATFORM", "linux/amd64"      
       }
 
-      commandLine "docker", "buildx", "bake", 
-              "-f", "docker-bake.hcl"
+      commandLine "docker", "buildx", "bake", "-f", "docker-bake.hcl"
+    }
+  }
+
+  // Print information on the image after it has been created
+  doLast {
+    project.logger.lifecycle("Multi-Platform Solr Docker Image Created")
+    project.logger.lifecycle("\tBase Image: \t${ -> baseAlpineDockerImage }")
+    project.logger.lifecycle("\tSolr Version: \t${ -> project.version }")
+    project.logger.lifecycle("\tSolr Distribution: \t${isImageSlim() ? "Slim" : "Full"}")
+  }
+
+}
+
+task dockerAlpineBuildxBakeAndTagMulti() {
+  group = 'Docker'
+  description = 'Build Multi-Platform Alpine Solr Docker Image & Tag'
+
+  dependsOn prepareDockerBakeContext
+
+  // Ensure that the docker image is rebuilt on build-arg changes or changes in the docker context
+  // Ensure that the docker image is re-tagged if the image ID or desired tag changes
+  inputs.properties([
+          baseAlpineDockerImage: baseAlpineDockerImage,
+          dockerImageName: dockerImageName,
+          dockerBuildAndLoadLocalPlatformOnly: dockerBuildAndLoadLocalPlatformOnly
+  ])
+  var solrTgzConfiguration = isImageSlim() ? configurations.solrSlimTgz : configurations.solrFullTgz
+  inputs.files(solrTgzConfiguration)
+  inputs.file("docker-bake.hcl")
+  inputs.property("isSlimImage", isImageSlim())
+  dependsOn(solrTgzConfiguration)
+
+  doLast {
+    exec {
+      environment "DOCKER_BAKE_CONTEXT", "${buildDir}/docker-bake-context"
+      environment "FULLY_QUALIFIED_SOLR_TAG", "${inputs.properties.dockerImageName}"
+      environment "SOLR_DOCKERFILE", "${buildDir}/docker-bake-context/solr-${ -> project.version }${dockerImageDistSuffix}/docker/Dockerfile.alpine"
+      environment "BASE_IMAGE", "${inputs.properties.baseAlpineDockerImage}"
+      environment "BUILD_AND_LOAD_LOCAL_PLATFORM_ONLY", "${inputs.properties.dockerBuildAndLoadLocalPlatformOnly}"
+
+      if (inputs.properties.baseAlpineDockerImage.startsWith('eclipse-temurin:17')) {
+        // NOTE: eclipse-temurin:17.0.15_6-jre-alpine-3.21 does not have a linux/arm64 base build
+        environment "LIMIT_PLATFORM", "linux/amd64"
+      }
+
+      commandLine "docker", "buildx", "bake", "--builder", "blc-devops-multiplatform-builder",
+              "-f", "docker-bake.hcl", "--push"
     }
   }
 
