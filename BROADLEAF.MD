@@ -1,7 +1,8 @@
 Update Steps
 
 - `./gradlew clean assemble`
-- Update `gradle.properties`. Set `production=true`. Set `disableUiModule=true`.-`./gradlew clean`.
+- Update `gradle.properties`. Set `production=true`. Set `disableUiModule=true`.
+- `./gradlew clean`.
 - Update `versions.props` as appropriate for the correct remediation versions
 - `./gradlew --write-locks`
 - `./gradlew updateLicenses`
