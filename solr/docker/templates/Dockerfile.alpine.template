@@ -67,12 +67,11 @@ RUN set -ex; \
   chmod 0664 /etc/default/solr.in.sh; \
   mkdir -p -m0770 /var/solr; \
   chown -R "$SOLR_USER:0" /var/solr; \
-  test ! -e /opt/solr/modules || ln -s /opt/solr/modules /opt/solr/contrib; \
-  test ! -e /opt/solr/prometheus-exporter || ln -s /opt/solr/prometheus-exporter /opt/solr/modules/prometheus-exporter;
+  test ! -e /opt/solr/modules || ln -s /opt/solr/modules /opt/solr/contrib;
 
 RUN set -ex; \
     apk update; \
-    apk add --no-cache acl lsof procps wget netcat-openbsd su-exec tini jattach bash; \
+    apk add --no-cache acl lsof procps wget netcat-openbsd su-exec tini jattach bash curl; \
     rm -rf /var/cache/apk/*;
 
 VOLUME /var/solr
