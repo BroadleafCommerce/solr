@@ -45,7 +45,7 @@ version = {
   // Jenkins can just set just a suffix, overriding SNAPSHOT, e.g. using build id:
   //  -Dversion.suffix=jenkins123
   
-  String versionSuffix = propertyOrDefault('version.suffix', 'SNAPSHOT')
+  String versionSuffix = propertyOrDefault('version.suffix', '')
   String v = propertyOrDefault('version.release', "${baseVersion}-${versionSuffix}")
   if (v.endsWith("-")) {
     v = v.substring(0, v.length() - 1)
