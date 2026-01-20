@@ -34,7 +34,7 @@ def dockerImageRepo = "${ -> propertyOrEnvOrDefault("solr.docker.imageRepo", "SO
 def dockerImageTag = "${ -> propertyOrEnvOrDefault("solr.docker.imageTag", "SOLR_DOCKER_IMAGE_TAG", project.version + dockerImageDistSuffix) }"
 def dockerImageName = "${ -> propertyOrEnvOrDefault("solr.docker.imageName", "SOLR_DOCKER_IMAGE_NAME", "${dockerImageRepo}:${dockerImageTag}${dockerImageTagSuffix}") }"
 def baseDockerImage = "${ -> propertyOrEnvOrDefault("solr.docker.baseImage", "SOLR_DOCKER_BASE_IMAGE", 'eclipse-temurin:17-jre-jammy') }"
-def baseAlpineDockerImage = "${ -> propertyOrEnvOrDefault("solr.docker.baseAlpineImage", "SOLR_DOCKER_BASE_ALPINE_IMAGE", 'eclipse-temurin:21.0.8_9-jre-alpine-3.22') }"
+def baseAlpineDockerImage = "${ -> propertyOrEnvOrDefault("solr.docker.baseAlpineImage", "SOLR_DOCKER_BASE_ALPINE_IMAGE", 'eclipse-temurin:21.0.9_10-jre-alpine-3.23') }"
 def officialDockerImageName = {String dist -> "${ -> propertyOrEnvOrDefault("solr.docker.imageName", "SOLR_DOCKER_IMAGE_NAME", "${dockerImageRepo}-official:${dockerImageTag}${distToSuffix(dist)}${dockerImageTagSuffix}") }" }
 def dockerBuildAndLoadLocalPlatformOnly = "${ -> propertyOrEnvOrDefault("solr.docker.buildAndLoadLocalPlatformOnly", "SOLR_DOCKER_BUILD_AND_LOAD_LOCAL_PLATFORM_ONLY", 'false') }" 
 
