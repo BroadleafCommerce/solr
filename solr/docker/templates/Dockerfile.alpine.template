@@ -70,8 +70,17 @@ RUN set -ex; \
   test ! -e /opt/solr/modules || ln -s /opt/solr/modules /opt/solr/contrib;
 
 RUN set -ex; \
+    # 1. Add Alpine Edge repositories (Main and Community)
+    echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories; \
+    echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories; \
+    # 2. Update index and upgrade apk-tools first
     apk update; \
+    apk add --upgrade apk-tools; \
+    # 3. Force upgrade all installed packages to Edge versions (patches CVEs)
+    apk upgrade --available; \
+    # 4. Install specific Solr dependencies
     apk add --no-cache acl lsof procps wget netcat-openbsd su-exec tini jattach bash curl; \
+    # 5. Clean up
     rm -rf /var/cache/apk/*;
 
 VOLUME /var/solr
