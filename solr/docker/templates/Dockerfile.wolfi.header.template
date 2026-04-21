@@ -14,7 +14,7 @@
 # limitations under the License.
 
 #-#
-#-# This template is used as the header of "alpine" Apache Solr Dockerfiles.
+#-# This template is used as the header of "wolfi" Apache Solr Dockerfiles.
 #-#
 #-# #######################################################################
 #-#
@@ -42,6 +42,8 @@ ARG BASE_IMAGE=_REPLACE_BASE_IMAGE_
 
 FROM $BASE_IMAGE
 
-COPY / /opt/
+SHELL ["/bin/bash", "-c"]
+
+COPY / /opt/solr/
 
 ARG SOLR_VERSION="_REPLACE_SOLR_VERSION_"
