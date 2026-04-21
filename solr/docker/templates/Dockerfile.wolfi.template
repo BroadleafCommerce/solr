@@ -48,15 +48,10 @@ ENV SOLR_USER="solr" \
     SOLR_JETTY_HOST="0.0.0.0" \
     SOLR_ZK_EMBEDDED_HOST="0.0.0.0"
 
-RUN set -ex; \
-  addgroup -g "$SOLR_GID" "$SOLR_GROUP"; \
-  adduser -D -H -u "$SOLR_UID" -G "$SOLR_GROUP" "$SOLR_USER"
-  
+USER root
 
-# add symlink to /opt/solr, remove what we don't want.
 # Remove the Dockerfile because it might not represent the dockerfile that was used to generate the image.
 RUN set -ex; \
-  (cd /opt; ln -s solr-*/ solr); \
   rm -Rf /opt/solr/docs /opt/solr/docker/Dockerfile;
 
 RUN set -ex; \
@@ -68,20 +63,6 @@ RUN set -ex; \
   mkdir -p -m0770 /var/solr; \
   chown -R "$SOLR_USER:0" /var/solr; \
   test ! -e /opt/solr/modules || ln -s /opt/solr/modules /opt/solr/contrib;
-
-RUN set -ex; \
-    # 1. Add Alpine Edge repositories (Main and Community)
-    echo "https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories; \
-    echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories; \
-    # 2. Update index and upgrade apk-tools first
-    apk update; \
-    apk add --upgrade apk-tools; \
-    # 3. Force upgrade all installed packages to Edge versions (patches CVEs)
-    apk upgrade --available; \
-    # 4. Install specific Solr dependencies
-    apk add --no-cache acl lsof procps wget netcat-openbsd su-exec tini jattach bash curl; \
-    # 5. Clean up
-    rm -rf /var/cache/apk/*;
 
 VOLUME /var/solr
 EXPOSE 8983

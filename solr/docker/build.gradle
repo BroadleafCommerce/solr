@@ -34,7 +34,7 @@ def dockerImageRepo = "${ -> propertyOrEnvOrDefault("solr.docker.imageRepo", "SO
 def dockerImageTag = "${ -> propertyOrEnvOrDefault("solr.docker.imageTag", "SOLR_DOCKER_IMAGE_TAG", project.version + dockerImageDistSuffix) }"
 def dockerImageName = "${ -> propertyOrEnvOrDefault("solr.docker.imageName", "SOLR_DOCKER_IMAGE_NAME", "${dockerImageRepo}:${dockerImageTag}${dockerImageTagSuffix}") }"
 def baseDockerImage = "${ -> propertyOrEnvOrDefault("solr.docker.baseImage", "SOLR_DOCKER_BASE_IMAGE", 'eclipse-temurin:17-jre-jammy') }"
-def baseAlpineDockerImage = "${ -> propertyOrEnvOrDefault("solr.docker.baseAlpineImage", "SOLR_DOCKER_BASE_ALPINE_IMAGE", 'eclipse-temurin:21.0.9_10-jre-alpine-3.23') }"
+def baseWolfiDockerImage = "${ -> propertyOrEnvOrDefault("solr.docker.baseWolfiImage", "SOLR_DOCKER_BASE_WOLFI_IMAGE", 'repository.broadleafcommerce.com:5001/broadleaf/solr-base:9.8.1-wolfi-1') }"
 def officialDockerImageName = {String dist -> "${ -> propertyOrEnvOrDefault("solr.docker.imageName", "SOLR_DOCKER_IMAGE_NAME", "${dockerImageRepo}-official:${dockerImageTag}${distToSuffix(dist)}${dockerImageTagSuffix}") }" }
 def dockerBuildAndLoadLocalPlatformOnly = "${ -> propertyOrEnvOrDefault("solr.docker.buildAndLoadLocalPlatformOnly", "SOLR_DOCKER_BUILD_AND_LOAD_LOCAL_PLATFORM_ONLY", 'false') }" 
 
@@ -53,7 +53,7 @@ configurations {
   packagingLocal {
     canBeResolved = true
   }
-  packagingAlpine {
+  packagingWolfi {
     canBeResolved = true
   }
   packagingOfficial {
@@ -102,8 +102,8 @@ dependencies {
     builtBy 'createDockerfileLocal'
   }
 
-  packagingAlpine files("${dockerfilesDirPath}/Dockerfile.alpine") {
-    builtBy 'createDockerfileAlpine'
+  packagingWolfi files("${dockerfilesDirPath}/Dockerfile.wolfi") {
+    builtBy 'createDockerfileWolfi'
   }
 
   packagingOfficial files("${dockerfilesDirPath}/Dockerfile.official-full") {
@@ -159,124 +159,13 @@ task assemblePackaging(type: Sync) {
       'Dockerfile'
     }
   })
-  from(configurations.packagingAlpine, {
-    include 'Dockerfile.alpine'
+  from(configurations.packagingWolfi, {
+    include 'Dockerfile.wolfi'
   })
   into packagingDir
 }
 
-task prepareDockerBakeContext() {
-  group = 'Docker'
-  description = 'Prepares the build context directory for docker buildx bake'
 
-  def outputDir = file("$buildDir/docker-bake-context")
-  outputs.dir(outputDir)
-
-  doLast {
-    def solrTgz = isImageSlim() ? configurations.solrSlimTgz.singleFile : configurations.solrFullTgz.singleFile
-    
-    project.logger.lifecycle("Extracting Solr distribution to docker bake context: ${solrTgz.name}")
-    project.logger.lifecycle("Docker Bake Context Build Dir: ${ -> buildDir }/docker-bake-context")
-    copy {
-      from tarTree(resources.gzip(solrTgz))
-      into "$buildDir/docker-bake-context"
-    }    
-  }
-
-}
-
-task dockerAlpineBuildxBakeAndTag() {
-  group = 'Docker'
-  description = 'Build Multi-Platform Alpine Solr Docker Image & Tag'
-
-  dependsOn prepareDockerBakeContext
-
-  // Ensure that the docker image is rebuilt on build-arg changes or changes in the docker context
-  // Ensure that the docker image is re-tagged if the image ID or desired tag changes
-  inputs.properties([
-          baseAlpineDockerImage: baseAlpineDockerImage,
-          dockerImageName: dockerImageName,
-          dockerBuildAndLoadLocalPlatformOnly: dockerBuildAndLoadLocalPlatformOnly
-  ])
-  var solrTgzConfiguration = isImageSlim() ? configurations.solrSlimTgz : configurations.solrFullTgz
-  inputs.files(solrTgzConfiguration)
-  inputs.file("docker-bake.hcl")
-  inputs.property("isSlimImage", isImageSlim())
-  dependsOn(solrTgzConfiguration)
-
-  doLast {
-    exec {
-      environment "DOCKER_BAKE_CONTEXT", "${buildDir}/docker-bake-context"
-      environment "FULLY_QUALIFIED_SOLR_TAG", "${inputs.properties.dockerImageName}"
-      environment "SOLR_DOCKERFILE", "${buildDir}/docker-bake-context/solr-${ -> project.version }${dockerImageDistSuffix}/docker/Dockerfile.alpine"
-      environment "BASE_IMAGE", "${inputs.properties.baseAlpineDockerImage}"
-      environment "BUILD_AND_LOAD_LOCAL_PLATFORM_ONLY", "${inputs.properties.dockerBuildAndLoadLocalPlatformOnly}"
-
-      if (inputs.properties.baseAlpineDockerImage.startsWith('eclipse-temurin:17')) {
-        // NOTE: eclipse-temurin:17.0.15_6-jre-alpine-3.21 does not have a linux/arm64 base build
-        environment "LIMIT_PLATFORM", "linux/amd64"      
-      }
-
-      commandLine "docker", "buildx", "bake", "-f", "docker-bake.hcl"
-    }
-  }
-
-  // Print information on the image after it has been created
-  doLast {
-    project.logger.lifecycle("Multi-Platform Solr Docker Image Created")
-    project.logger.lifecycle("\tBase Image: \t${ -> baseAlpineDockerImage }")
-    project.logger.lifecycle("\tSolr Version: \t${ -> project.version }")
-    project.logger.lifecycle("\tSolr Distribution: \t${isImageSlim() ? "Slim" : "Full"}")
-  }
-
-}
-
-task dockerAlpineBuildxBakeAndTagMulti() {
-  group = 'Docker'
-  description = 'Build Multi-Platform Alpine Solr Docker Image & Tag'
-
-  dependsOn prepareDockerBakeContext
-
-  // Ensure that the docker image is rebuilt on build-arg changes or changes in the docker context
-  // Ensure that the docker image is re-tagged if the image ID or desired tag changes
-  inputs.properties([
-          baseAlpineDockerImage: baseAlpineDockerImage,
-          dockerImageName: dockerImageName,
-          dockerBuildAndLoadLocalPlatformOnly: dockerBuildAndLoadLocalPlatformOnly
-  ])
-  var solrTgzConfiguration = isImageSlim() ? configurations.solrSlimTgz : configurations.solrFullTgz
-  inputs.files(solrTgzConfiguration)
-  inputs.file("docker-bake.hcl")
-  inputs.property("isSlimImage", isImageSlim())
-  dependsOn(solrTgzConfiguration)
-
-  doLast {
-    exec {
-      environment "DOCKER_BAKE_CONTEXT", "${buildDir}/docker-bake-context"
-      environment "FULLY_QUALIFIED_SOLR_TAG", "${inputs.properties.dockerImageName}"
-      environment "SOLR_DOCKERFILE", "${buildDir}/docker-bake-context/solr-${ -> project.version }${dockerImageDistSuffix}/docker/Dockerfile.alpine"
-      environment "BASE_IMAGE", "${inputs.properties.baseAlpineDockerImage}"
-      environment "BUILD_AND_LOAD_LOCAL_PLATFORM_ONLY", "${inputs.properties.dockerBuildAndLoadLocalPlatformOnly}"
-
-      if (inputs.properties.baseAlpineDockerImage.startsWith('eclipse-temurin:17')) {
-        // NOTE: eclipse-temurin:17.0.15_6-jre-alpine-3.21 does not have a linux/arm64 base build
-        environment "LIMIT_PLATFORM", "linux/amd64"
-      }
-
-      commandLine "docker", "buildx", "bake", "--builder", "blc-devops-multiplatform-builder",
-              "-f", "docker-bake.hcl", "--push"
-    }
-  }
-
-  // Print information on the image after it has been created
-  doLast {
-    project.logger.lifecycle("Multi-Platform Solr Docker Image Created")
-    project.logger.lifecycle("\tBase Image: \t${ -> baseAlpineDockerImage }")
-    project.logger.lifecycle("\tSolr Version: \t${ -> project.version }")
-    project.logger.lifecycle("\tSolr Distribution: \t${isImageSlim() ? "Slim" : "Full"}")
-  }
-
-}
 
 task dockerBuild() {
   group = 'Docker'
@@ -410,14 +299,14 @@ task createBodySnippetDockerfile(type: Copy) {
   // implemented as either a build-arg or as a variable expanded in the header snippets (or both)
   filter( commentFilter )
 }
-task createAlpineSnippetDockerfile(type: Copy) {
-  from 'templates/Dockerfile.alpine.template'
+task createWolfiSnippetDockerfile(type: Copy) {
+  from 'templates/Dockerfile.wolfi.template'
   into "$buildDir/snippets/"
-  outputs.file("$buildDir/snippets/Dockerfile.alpine.snippet")
+  outputs.file("$buildDir/snippets/Dockerfile.wolfi.snippet")
   rename { name -> name.replace("template","snippet") }
   filteringCharset 'UTF-8'
   
-  // NOTE: The only "templating" the Dockerfile.alpine supports is removing comments.
+  // NOTE: The only "templating" the Dockerfile.wolfi supports is removing comments.
   // 
   // Any situation where it feel appropriate to add variable substitution should be reconsidered, and probably
   // implemented as either a build-arg or as a variable expanded in the header snippets (or both)
@@ -440,12 +329,12 @@ ext {
     // be defined in the task creation.
     props: [:]
   ]
-  dfAlpineDetails = [
-    name: 'Alpine',
-    template: 'alpine',
-    desc: 'Dockerfile used to create Alpine-based Solr docker images directly from Solr release tgz file',
+  dfWolfiDetails = [
+    name: 'Wolfi',
+    template: 'wolfi',
+    desc: 'Dockerfile used to create Wolfi-based Solr docker images directly from Solr release tgz file',
 
-    // NOTE: There should be no reason for Dockerfile.alpine to include unique values
+    // NOTE: There should be no reason for Dockerfile.wolfi to include unique values
     // 
     // Values identical in both Dockerfiles should use consistent names in both templates and
     // be defined in the task creation.
@@ -489,7 +378,7 @@ This section creates the following gradle tasks:
 - createDockerfileOfficialFull
 - createDockerfileOfficialSlim
 - createDockerfileLocal
-- createDockerfileAlpine
+- createDockerfileWolfi
 
 Both will create a self-standing Dockerfile that can be used to build a Solr image.
 These are templated using a unique header file for each Dockerfile and the same body template for the logic on installing Solr.
@@ -498,7 +387,7 @@ These templates can be found in the templates/ directory.
 The snippets of each section (header and body) are saved to build/snippets after they are templated and before they are combined.
 The final Dockerfiles are merely the snippet headers combined with the snippet body.
  */
-[ dfLocalDetails, dfAlpineDetails, dfOfficialFullDetails, dfOfficialSlimDetails ].each{ details ->
+[ dfLocalDetails, dfWolfiDetails, dfOfficialFullDetails, dfOfficialSlimDetails ].each{ details ->
   def fileName = "Dockerfile.${ -> details.name.replaceAll("(.)([A-Z])", "\$1-\$2").toLowerCase(Locale.ROOT) }"
   def outFile = file("$dockerfilesDirPath/${fileName}")
 
@@ -514,18 +403,18 @@ The final Dockerfiles are merely the snippet headers combined with the snippet b
       ]
 
     def bodySnippet = "body"
-    if (details.name.startsWith('Alpine')) {
-      bodySnippet = "alpine" 
+    if (details.name.startsWith('Wolfi')) {
+      bodySnippet = "wolfi" 
 
       props = [
-          'BASE_IMAGE': baseAlpineDockerImage,
+          'BASE_IMAGE': baseWolfiDockerImage,
           'SOLR_VERSION': "${ -> project.version}",
           * : details.props
       ]
     }
 
     dependsOn tasks.createBodySnippetDockerfile
-    dependsOn tasks.createAlpineSnippetDockerfile
+    dependsOn tasks.createWolfiSnippetDockerfile
     inputs.properties(props)
     inputs.file("$buildDir/snippets/Dockerfile.${bodySnippet}.snippet")
     outputs.file(outFile)
@@ -565,7 +454,128 @@ The final Dockerfiles are merely the snippet headers combined with the snippet b
   }
 }
 assemblePackaging.dependsOn tasks.createDockerfileLocal
-tasks.createDockerfileAlpine.dependsOn tasks.createDockerfileLocal
+tasks.createDockerfileWolfi.dependsOn tasks.createDockerfileLocal
+
+task prepareDockerBakeContext() {
+  group = 'Docker'
+  description = 'Prepares the build context directory for docker buildx bake'
+
+  dependsOn tasks.createDockerfileWolfi
+
+  def outputDir = file("$buildDir/docker-bake-context")
+  outputs.dir(outputDir)
+
+  doLast {
+    def solrTgz = isImageSlim() ? configurations.solrSlimTgz.singleFile : configurations.solrFullTgz.singleFile
+    
+    project.logger.lifecycle("Extracting Solr distribution to docker bake context: ${solrTgz.name}")
+    project.logger.lifecycle("Docker Bake Context Build Dir: ${ -> buildDir }/docker-bake-context")
+    copy {
+      from tarTree(resources.gzip(solrTgz))
+      into "$buildDir/docker-bake-context"
+    }
+
+    // Overwrite the Dockerfile in the extracted context with our freshly generated one
+    copy {
+      from "$dockerfilesDirPath/Dockerfile.wolfi"
+      into "$buildDir/docker-bake-context/solr-${ -> project.version }${dockerImageDistSuffix}/docker"
+    }
+  }
+
+}
+
+task dockerWolfiBuildxBakeAndTag() {
+  group = 'Docker'
+  description = 'Build Multi-Platform Wolfi Solr Docker Image & Tag'
+
+  dependsOn prepareDockerBakeContext
+
+  // Ensure that the docker image is rebuilt on build-arg changes or changes in the docker context
+  // Ensure that the docker image is re-tagged if the image ID or desired tag changes
+  inputs.properties([
+          baseWolfiDockerImage: baseWolfiDockerImage,
+          dockerImageName: dockerImageName,
+          dockerBuildAndLoadLocalPlatformOnly: dockerBuildAndLoadLocalPlatformOnly
+  ])
+  var solrTgzConfiguration = isImageSlim() ? configurations.solrSlimTgz : configurations.solrFullTgz
+  inputs.files(solrTgzConfiguration)
+  inputs.file("docker-bake.hcl")
+  inputs.property("isSlimImage", isImageSlim())
+  dependsOn(solrTgzConfiguration)
+
+  doLast {
+    exec {
+      environment "DOCKER_BAKE_CONTEXT", "${buildDir}/docker-bake-context/solr-${ -> project.version }${dockerImageDistSuffix}"
+      environment "FULLY_QUALIFIED_SOLR_TAG", "${inputs.properties.dockerImageName}"
+      environment "SOLR_DOCKERFILE", "docker/Dockerfile.wolfi"
+      environment "BASE_IMAGE", "${inputs.properties.baseWolfiDockerImage}"
+      environment "BUILD_AND_LOAD_LOCAL_PLATFORM_ONLY", "${inputs.properties.dockerBuildAndLoadLocalPlatformOnly}"
+
+      if (inputs.properties.baseWolfiDockerImage.startsWith('eclipse-temurin:17')) {
+        // NOTE: eclipse-temurin:17.0.15_6-jre-alpine-3.21 does not have a linux/arm64 base build
+        environment "LIMIT_PLATFORM", "linux/amd64"      
+      }
+
+      commandLine "docker", "buildx", "bake", "-f", "docker-bake.hcl"
+    }
+  }
+
+  // Print information on the image after it has been created
+  doLast {
+    project.logger.lifecycle("Multi-Platform Solr Docker Image Created")
+    project.logger.lifecycle("\tBase Image: \t${ -> baseWolfiDockerImage }")
+    project.logger.lifecycle("\tSolr Version: \t${ -> project.version }")
+    project.logger.lifecycle("\tSolr Distribution: \t${isImageSlim() ? "Slim" : "Full"}")
+  }
+
+}
+
+task dockerWolfiBuildxBakeAndTagMulti() {
+  group = 'Docker'
+  description = 'Build Multi-Platform Wolfi Solr Docker Image & Tag'
+
+  dependsOn prepareDockerBakeContext
+
+  // Ensure that the docker image is rebuilt on build-arg changes or changes in the docker context
+  // Ensure that the docker image is re-tagged if the image ID or desired tag changes
+  inputs.properties([
+          baseWolfiDockerImage: baseWolfiDockerImage,
+          dockerImageName: dockerImageName,
+          dockerBuildAndLoadLocalPlatformOnly: dockerBuildAndLoadLocalPlatformOnly
+  ])
+  var solrTgzConfiguration = isImageSlim() ? configurations.solrSlimTgz : configurations.solrFullTgz
+  inputs.files(solrTgzConfiguration)
+  inputs.file("docker-bake.hcl")
+  inputs.property("isSlimImage", isImageSlim())
+  dependsOn(solrTgzConfiguration)
+
+  doLast {
+    exec {
+      environment "DOCKER_BAKE_CONTEXT", "${buildDir}/docker-bake-context/solr-${ -> project.version }${dockerImageDistSuffix}"
+      environment "FULLY_QUALIFIED_SOLR_TAG", "${inputs.properties.dockerImageName}"
+      environment "SOLR_DOCKERFILE", "docker/Dockerfile.wolfi"
+      environment "BASE_IMAGE", "${inputs.properties.baseWolfiDockerImage}"
+      environment "BUILD_AND_LOAD_LOCAL_PLATFORM_ONLY", "${inputs.properties.dockerBuildAndLoadLocalPlatformOnly}"
+
+      if (inputs.properties.baseWolfiDockerImage.startsWith('eclipse-temurin:17')) {
+        // NOTE: eclipse-temurin:17.0.15_6-jre-alpine-3.21 does not have a linux/arm64 base build
+        environment "LIMIT_PLATFORM", "linux/amd64"
+      }
+
+      commandLine "docker", "buildx", "bake", "--builder", "blc-devops-multiplatform-builder",
+              "-f", "docker-bake.hcl", "--push"
+    }
+  }
+
+  // Print information on the image after it has been created
+  doLast {
+    project.logger.lifecycle("Multi-Platform Solr Docker Image Created")
+    project.logger.lifecycle("\tBase Image: \t${ -> baseWolfiDockerImage }")
+    project.logger.lifecycle("\tSolr Version: \t${ -> project.version }")
+    project.logger.lifecycle("\tSolr Distribution: \t${isImageSlim() ? "Slim" : "Full"}")
+  }
+
+}
 tasks.createDockerfileOfficialFull.dependsOn configurations.solrFullTgz // to lazy compute SHA
 tasks.createDockerfileOfficialSlim.dependsOn configurations.solrSlimTgz // to lazy compute SHA
 tasks.createDockerfileOfficialSlim.mustRunAfter tasks.createDockerfileOfficialFull // Eliminate a weird warning
