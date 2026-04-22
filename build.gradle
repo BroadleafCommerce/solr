@@ -45,13 +45,8 @@ version = {
 
   // Jenkins can just set just a suffix, overriding SNAPSHOT, e.g. using build id:
   //  -Dversion.suffix=jenkins123
-<<<<<<< HEAD
 
   String versionSuffix = propertyOrDefault('version.suffix', 'SNAPSHOT')
-=======
-  
-  String versionSuffix = propertyOrDefault('version.suffix', '')
->>>>>>> 071b3d9ef4c (Update the slim build to include the prometheus exporter. This will allow us to have an exporter capable image that is readily available and secure.)
   String v = propertyOrDefault('version.release', "${baseVersion}-${versionSuffix}")
   if (v.endsWith("-")) {
     v = v.substring(0, v.length() - 1)
