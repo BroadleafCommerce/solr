@@ -34,7 +34,7 @@ def dockerImageRepo = "${ -> propertyOrEnvOrDefault("solr.docker.imageRepo", "SO
 def dockerImageTag = "${ -> propertyOrEnvOrDefault("solr.docker.imageTag", "SOLR_DOCKER_IMAGE_TAG", project.version + dockerImageDistSuffix) }"
 def dockerImageName = "${ -> propertyOrEnvOrDefault("solr.docker.imageName", "SOLR_DOCKER_IMAGE_NAME", "${dockerImageRepo}:${dockerImageTag}${dockerImageTagSuffix}") }"
 def baseDockerImage = "${ -> propertyOrEnvOrDefault("solr.docker.baseImage", "SOLR_DOCKER_BASE_IMAGE", 'eclipse-temurin:17-jre-jammy') }"
-def baseWolfiDockerImage = "${ -> propertyOrEnvOrDefault("solr.docker.baseWolfiImage", "SOLR_DOCKER_BASE_WOLFI_IMAGE", 'repository.broadleafcommerce.com:5001/broadleaf/solr-base:wolfi-1') }"
+def baseWolfiDockerImage = "${ -> propertyOrEnvOrDefault("solr.docker.baseWolfiImage", "SOLR_DOCKER_BASE_WOLFI_IMAGE", 'repository.broadleafcommerce.com:5001/broadleaf/solr-base:wolfi-2') }"
 def officialDockerImageName = {String dist -> "${ -> propertyOrEnvOrDefault("solr.docker.imageName", "SOLR_DOCKER_IMAGE_NAME", "${dockerImageRepo}-official:${dockerImageTag}${distToSuffix(dist)}${dockerImageTagSuffix}") }" }
 def dockerBuildAndLoadLocalPlatformOnly = "${ -> propertyOrEnvOrDefault("solr.docker.buildAndLoadLocalPlatformOnly", "SOLR_DOCKER_BUILD_AND_LOAD_LOCAL_PLATFORM_ONLY", 'false') }" 
 
