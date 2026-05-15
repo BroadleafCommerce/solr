@@ -9,4 +9,4 @@ Update Steps
 - Update `de.thetaphi.forbiddenapis` version in `/build.gradle` if necessary to cover newer signatures for third party dep updates
 - `./gradlew check` to run the test suite
 - `./gradlew clean assemble`
-- `./gradlew dockerWolfiBuildxBakeAndTagMulti -Psolr.docker.dist=slim -Psolr.docker.imageName=repository.broadleafcommerce.com:5001/broadleaf/solr:9.10.2-wolfi-3` (Increment the `r1` to a higher value if only changing java or os deps without changing app, jre, or os versions).
+- `./gradlew dockerWolfiBuildxBakeAndTagMulti -Psolr.docker.dist=slim -Psolr.docker.imageName=repository.broadleafcommerce.com:5001/broadleaf/solr:9.10.2-wolfi-4` (Increment the `r1` to a higher value if only changing java or os deps without changing app, jre, or os versions).
